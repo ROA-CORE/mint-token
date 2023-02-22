@@ -25,6 +25,12 @@ fn main() {
     println!("mint new token");
     let args: Vec<String> = env::args().collect();
 
+    println!("args: {}", args.len());
+
+    if args.len() < 4 {
+        panic!("Not matched args. ex) cluster private_path decimals amount");
+    }
+
     let _cluster = &args[1];
     let _private_path = &args[2];
     let _decimals = u8::from_str(&args[3]).unwrap();
@@ -36,9 +42,19 @@ fn main() {
 
     let token_program = &id();
 
-    let mut url = String::from("https://api.devnet.solana.com");
+    let mut url = String::from("");
     if _cluster == "mainnet" {
         url = String::from("https://api.mainnet-beta.solana.com");
+    }
+    if _cluster == "testnet" {
+        url = String::from("https://api.testnet.solana.com");
+    }
+    if _cluster == "devent" {
+        url = String::from("https://api.devnet.solana.com");
+    }
+
+    if url == "" {
+        panic!("Error. Solana Network is wrong. testnet or devnet or mainnet");
     }
 
     // Connection
@@ -96,6 +112,8 @@ fn main() {
     let mint_signature = conn.send_and_confirm_transaction(&token_mint_tx).unwrap();
     println!("Mint Signature: {}", mint_signature);
 
+    let recent_blockhash2 = conn.get_latest_blockhash().unwrap();
+
     // Mint Account
     let create_associated_token_account_ix= spl_associated_token_account::instruction::create_associated_token_account(&payer.pubkey(), &owner.pubkey(), &mint_account.pubkey());
 
@@ -103,7 +121,7 @@ fn main() {
         &[create_associated_token_account_ix],
         Some(&payer.pubkey()),
         &[&payer],
-        recent_blockhash,
+        recent_blockhash2,
     );
 
     let associated_token_account_signature = conn.send_and_confirm_transaction(&create_associated_token_account_tx).unwrap();
@@ -111,6 +129,8 @@ fn main() {
 
     let associated_token_account = spl_associated_token_account::get_associated_token_address(&owner.pubkey(), &mint_account.pubkey());
     println!("associated_token_account. {}", associated_token_account);
+
+    let recent_blockhash3 = conn.get_latest_blockhash().unwrap();
 
     // Mint to
     let mint_to_ix = instruction::mint_to(
@@ -126,7 +146,7 @@ fn main() {
         &[mint_to_ix],
         Some(&payer.pubkey()),
         &[&payer, &owner],
-        recent_blockhash,
+        recent_blockhash3,
     );
     let mint_to_signature = conn.send_and_confirm_transaction(&mint_to_tx).unwrap();
     println!("Mint to. Signature: {}", mint_to_signature);
